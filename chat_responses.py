@@ -51,7 +51,7 @@ def select_best_visualization(data: pd.DataFrame, user_request: str) -> str:
     -Justify why each visualization is the most suitable choice given the dataset and the analytical goal.
     -Consider factors like data clarity, ease of interpretation, and suitability for large datasets.
     -If applicable, suggest enhancements like color schemes, annotations, or interactive elements that improve user experience.
-    
+   
     Dataset Summary:
     {dataset_summary}
 
@@ -80,6 +80,7 @@ def generate_visualization_code(data: pd.DataFrame, visualization_types: str, us
 
     Guidelines:
     -Use the DataFrame variable name df.
+    -Import all the necessary libraries you need for the visualizations.
     -The code should be optimized for Streamlit and ensure clear, precise, and well-structured visualizations.
     -Apply appropriate titles, axis labels, legends, and color schemes for readability.
     -Use gridlines, annotations, and formatting enhancements where relevant.
@@ -95,11 +96,11 @@ def explain_visualization_choice(visualization_types: str, user_request: str) ->
     Provides an interpretation of each visualization and how it helps in answering the question.
     """
     prompt = f"""
-    Provide a brief but precise explanation for each visualization.
-    Clearly describe what insights each visualization will reveal.
-    For each visualization, explain how it answers the specific question posed by the user and the insights it provides. 
-    Interpret the visualizations in the context of the dataset and the user's request.
-    
+    -Provide a brief but precise explanation for each visualization.
+    -Clearly describe what insights each visualization will reveal.
+    -For each visualization, explain how it answers the specific question posed by the user and the insights it provides.
+    -Interpret the visualizations in the context of the dataset and the user's request.
+   
     Visualization Types: {visualization_types}
 
     User Request:
@@ -146,14 +147,14 @@ def chatbot_interface():
 
                 st.subheader("🖥 Generated Python Code")
                 st.code(code, language="python")
-                
+               
                 # Execute the visualization code in Streamlit
                 try:
                     match = re.search(r"```python\n(.*?)\n```", code, re.DOTALL)
                     python_code = match.group(1) if match else code
                     python_code = python_code.replace("plt.show()", "st.pyplot(plt)")  # Ensure Streamlit compatibility
                     exec(python_code, globals())  # Execute the generated code
-                    
+                   
                 except Exception as e:
                     st.error(f"⚠️ Error executing visualization: {e}")
 
