@@ -42,13 +42,15 @@ def analyze_query(user_request: str) -> str:
 # Select appropriate visualizations based on the dataset and question
 def select_best_visualization(data: pd.DataFrame, user_request: str) -> str:
     """
-    Given the dataset and user request, suggests the most relevant visualizations (e.g., bar charts, line plots, etc.).
+    Based on the dataset summary and the user's request, recommend the three most effective visualization techniques while ensuring compliance with data visualization best practices:
     """
     dataset_summary = data.describe(include='all').to_string()
     prompt = f"""
-    Given the dataset summary and the user's request, suggest the most effective visualizations to answer the question. Consider the following:
-    - The type of data (numerical, categorical, time-series).
-    - What the user is asking (e.g., trend analysis, comparison, distribution).
+    Based on the dataset summary and the user's request, recommend the three most effective visualization techniques while ensuring compliance with data visualization best practices:
+    -Clearly specify the type of visualization (e.g., line chart, bar chart, heatmap, box plot).
+    -Justify why each visualization is the most suitable choice given the dataset and the analytical goal.
+    -Consider factors like data clarity, ease of interpretation, and suitability for large datasets.
+    -If applicable, suggest enhancements like color schemes, annotations, or interactive elements that improve user experience.
     
     Dataset Summary:
     {dataset_summary}
@@ -77,20 +79,24 @@ def generate_visualization_code(data: pd.DataFrame, visualization_types: str, us
     {user_request}
 
     Guidelines:
-    - Assume the DataFrame is named `df`.
-    - The code should be ready to run in a Streamlit app.
-    - Do not explain or provide anything other than the Python code.
+    -Use the DataFrame variable name df.
+    -The code should be optimized for Streamlit and ensure clear, precise, and well-structured visualizations.
+    -Apply appropriate titles, axis labels, legends, and color schemes for readability.
+    -Use gridlines, annotations, and formatting enhancements where relevant.
+    -Ensure the code is executable without requiring modifications.
+    -Return only the Python code; do not include explanations.
     """
     return query_claude(prompt)
 
 # Explain why specific visualizations are appropriate for the user's request
 def explain_visualization_choice(visualization_types: str, user_request: str) -> str:
     """
-    Explains why the selected visualizations are well-suited to answer the user's question.
+    Explain why each of the following visualizations is the best choice for answering the user's question, ensuring clarity and alignment with best practices:
     Provides an interpretation of each visualization and how it helps in answering the question.
     """
     prompt = f"""
-    Provide a brief explanation (1-2 sentences) of why each of the following visualizations is a good choice for the user's question.
+    Provide a brief but precise explanation for each visualization.
+    Clearly describe what insights each visualization will reveal.
     For each visualization, explain how it answers the specific question posed by the user and the insights it provides. 
     Interpret the visualizations in the context of the dataset and the user's request.
     
