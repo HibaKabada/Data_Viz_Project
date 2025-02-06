@@ -1,12 +1,22 @@
 import streamlit as st
 # Streamlit app configuration
 st.set_page_config(page_title="QueryGenius", page_icon="🤖", layout="wide")
+import re
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
 from data.data_transformation import (
-    load_dataset, 
-    summarize_data, 
-    handle_missing_values, 
-    handle_duplicates, 
+    load_dataset,
+    summarize_data,
+    handle_missing_values,
+    handle_duplicates,
     handle_outliers
+)
+from chat_responses import (
+    analyze_query,
+    select_best_visualization,
+    generate_visualization_code,
+    explain_visualization_choice
 )
 
 st.markdown("""
@@ -30,19 +40,15 @@ if "transformed_df" not in st.session_state:
 with st.sidebar:
     # Logo and chatbot name
     st.markdown("<h2 style='text-align: center;'>QueryGenius</h2>", unsafe_allow_html=True)
-    
+   
     # Sidebar navigation
     page = st.radio("Go to", ["How to use", "Chatbot", "Data Transformation", "About"])
-    
+   
     if page == "Chatbot":
-        None
+        st.subheader("API Configuration")
+        api_key = st.text_input("Enter your Claude API key:", type="password")
 
 if page == "How to use":
-
-
-    
-
-    
     st.markdown("""
          
         This application allows you to interact with a chatbot and perform data cleaning and transformation.  
@@ -82,28 +88,28 @@ if page == "How to use":
 elif page == "Data Transformation":
     st.title("📊 Data Cleaning & Transformation")
     uploaded_file = st.file_uploader("Upload your dataset (CSV, Excel, JSON, PDF)", type=["csv", "xlsx", "json", "pdf"])
-    
+   
     if uploaded_file:
         try:
             df = load_dataset(uploaded_file)
             if df is not None:
                 summarize_data(df)
-                
+               
                 # Handling missing values
                 st.subheader("💪 Handle Missing Values")
                 strategy = st.selectbox("Select strategy", ["mean", "median", "valeur la plus fréquente", "drop"])
                 df = handle_missing_values(df, strategy)
-                
+               
                 # Handling duplicates
                 st.subheader("🛠️ Handle Duplicates")
                 handle_dupes = st.radio("Choose action", ["Keep", "Supprimer"])
                 df = handle_duplicates(df, handle_dupes)
-                
+               
                 # Handling outliers
                 st.subheader("🌟 Handle Outliers")
                 outlier_strategy = st.selectbox("Choose strategy", ["nothing", "log_transformation", "mean"])
                 df = handle_outliers(df, outlier_strategy)
-                
+               
                 st.session_state.transformed_df = df
                 st.success("Data transformation applied successfully!")
         except Exception as e:
@@ -115,11 +121,46 @@ elif page == "Data Transformation":
                     data=df.to_csv(index=False).encode("utf-8"),
                     file_name="data_cleaned.csv",
                     mime="text/csv"
-                )   
+                )  
 
 # Page: Chatbot
 elif page == "Chatbot":
-    None
+    st.title("💬 AI Chatbot for Data Visualization")
+   
+    if st.session_state.transformed_df is not None:
+        df = st.session_state.transformed_df
+        st.subheader("📊 Transformed Dataset Preview")
+        st.dataframe(df.head())
+       
+        user_input = st.text_area("Describe the visualization you want:",
+                                  placeholder="Example: Show a trend of sales over time using a line chart")
+       
+        if st.button("🚀 Generate Visualization") and api_key:
+            with st.spinner("⏳ Processing your request..."):
+                query_analysis = analyze_query(user_input)
+                best_viz = select_best_visualization(df, user_input)
+                explanation = explain_visualization_choice(best_viz, user_input)
+                code = generate_visualization_code(df, best_viz, user_input)
+               
+                st.subheader("🔍 Query Analysis")
+                st.write(query_analysis)
+               
+                st.subheader(f"📊 Selected Visualization: {best_viz}")
+                st.write(explanation)
+               
+                st.subheader("🖥 Generated Python Code")
+                st.code(code, language="python")
+               
+                try:
+                    match = re.search(r"```python\n(.*?)\n```", code, re.DOTALL)
+                    python_code = match.group(1) if match else code
+                    python_code = python_code.replace("plt.show()", "st.pyplot(plt)")
+                    exec(python_code, globals())
+                except Exception as e:
+                    st.error(f"⚠️ Error executing visualization: {e}")
+    else:
+        st.info("📂 Please upload and transform your data in 'Data Transformation' first!")
+
 # Page: About
 elif page == "About":
     st.title("ℹ️ About QueryGenius")
@@ -130,11 +171,11 @@ elif page == "About":
         ### Developed By:
         - **Kabeda Hiba**: Hiba.kabada@dauphine.eu
         - **Inoubli Meriam**: Meriam.inoubli@dauphine.eu
-                
+               
         ### Under the guidance of:
         - **Professor Hadrien Mariaccia**
-        
-        
+       
+       
         ### Technologies Used:
         - **Large Language Model (LLM)**: Powers the chatbot and natural language processing.
         - **Streamlit**: Framework for building the interactive web interface.
@@ -148,4 +189,5 @@ elif page == "About":
         ---
         Made with ❤️
     """)
+
 
