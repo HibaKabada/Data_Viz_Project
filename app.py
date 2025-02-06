@@ -1,10 +1,9 @@
 import streamlit as st
+import matplotlib.pyplot as plt
+import seaborn as sns
 # Streamlit app configuration
 st.set_page_config(page_title="QueryGenius", page_icon="🤖", layout="wide")
 import re
-import matplotlib.pyplot as plt 
-import seaborn as sns
-
 from data.data_transformation import (
     load_dataset,
     summarize_data,
@@ -36,6 +35,8 @@ st.markdown("""
 # Initialize session state for storing transformed data
 if "transformed_df" not in st.session_state:
     st.session_state.transformed_df = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 with st.sidebar:
     # Logo and chatbot name
@@ -97,19 +98,39 @@ elif page == "Data Transformation":
                
                 # Handling missing values
                 st.subheader("💪 Handle Missing Values")
-                strategy = st.selectbox("Select strategy", ["mean", "median", "valeur la plus fréquente", "drop"])
+                strategy = st.selectbox("Select strategy", ["mean", "median", "most_frequent", "drop"])
                 df = handle_missing_values(df, strategy)
-               
+                st.write("### 🔍 Preview After Handling Missing Values")
+                st.dataframe(df.head())
                 # Handling duplicates
                 st.subheader("🛠️ Handle Duplicates")
-                handle_dupes = st.radio("Choose action", ["Keep", "Supprimer"])
+                handle_dupes = st.radio("Choose action", ["Keep", "Remove"])
                 df = handle_duplicates(df, handle_dupes)
+                st.write("### 🔍 Preview After Handling Duplicates")
+                st.dataframe(df.head())
                
                 # Handling outliers
                 st.subheader("🌟 Handle Outliers")
-                outlier_strategy = st.selectbox("Choose strategy", ["nothing", "log_transformation", "mean"])
+                outlier_strategy = st.selectbox("Choose strategy", ["Nothing", "Log_transformation", "Mean","Median","Drop"])
                 df = handle_outliers(df, outlier_strategy)
-               
+                # 📌 Select a column for visualization
+                selected_col = st.selectbox("📊 Select a column to visualize:", numeric_cols.columns)
+
+                # 📊 Visualization before transformation
+                st.write(f"### 📊 Distribution of `{selected_col}` Before Handling")
+                fig, ax = plt.subplots(figsize=(8, 4))
+                numeric_cols[selected_col].hist(bins=30, edgecolor="black", ax=ax)
+                st.pyplot(fig)
+
+                # 📊 Visualization after transformation
+                st.write(f"### 📊 Distribution of `{selected_col}` After Handling")
+                fig, ax = plt.subplots(figsize=(8, 4))
+                df[selected_col].hist(bins=30, edgecolor="black", ax=ax)
+                st.pyplot(fig)
+
+                # Preview of data after transformation
+                st.write("### 🔍 Preview After Handling Outliers")
+                st.dataframe(df.head())
                 st.session_state.transformed_df = df
                 st.success("Data transformation applied successfully!")
         except Exception as e:
@@ -124,43 +145,61 @@ elif page == "Data Transformation":
                 )  
 
 # Page: Chatbot
-elif page == "Chatbot":
+if page == "Chatbot":
     st.title("💬 AI Chatbot for Data Visualization")
-   
-    if st.session_state.transformed_df is not None:
-        df = st.session_state.transformed_df
-        st.subheader("📊 Transformed Dataset Preview")
-        st.dataframe(df.head())
-       
-        user_input = st.text_area("Describe the visualization you want:",
-                                  placeholder="Example: Show a trend of sales over time using a line chart")
-       
-        if st.button("🚀 Generate Visualization") and api_key:
+    uploaded_file = st.file_uploader("📂 Please upload your dataset (CSV, Excel, JSON, PDF)", type=["csv", "xlsx", "json", "pdf"])
+    
+    if uploaded_file:
+        try:
+            df = load_dataset(uploaded_file)
+            if df is not None:
+                # Appliquer la transformation par défaut
+                df = handle_missing_values(df, "most_frequent")
+                df = handle_duplicates(df, "Remove")
+                df = handle_outliers(df, "Nothing")
+                
+                st.session_state.transformed_df = df
+                st.success("✅ A default transformation has been applied to your data. You can customize it in the 'Data Transformation' section'.")
+                
+                st.subheader("📊 Transformed Dataset Preview")
+                st.dataframe(df.head())
+        except Exception as e:
+            st.error(f"❌ Error processing file: {e}")
+
+    for message in st.session_state.messages:
+        st.chat_message(message["role"]).write(message["content"])
+
+    user_input = st.chat_input("Ask your question here...")
+    
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        st.chat_message("user").write(user_input)
+
+        if api_key and st.session_state.transformed_df is not None:
             with st.spinner("⏳ Processing your request..."):
                 query_analysis = analyze_query(user_input)
                 best_viz = select_best_visualization(df, user_input)
                 explanation = explain_visualization_choice(best_viz, user_input)
                 code = generate_visualization_code(df, best_viz, user_input)
-               
-                st.subheader("🔍 Query Analysis")
-                st.write(query_analysis)
-               
-                st.subheader(f"📊 Selected Visualization: {best_viz}")
-                st.write(explanation)
-               
-                st.subheader("🖥 Generated Python Code")
-                st.code(code, language="python")
-               
+
+                response = f"**🔍 Query Analysis:** {query_analysis}\n\n" \
+                           f"**📊 Selected Visualization:** {best_viz}\n\n" \
+                           f"**🖥 Generated Python Code:**\n```python\n{code}\n```"
+                
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.chat_message("assistant").write(response)
+
                 try:
                     match = re.search(r"```python\n(.*?)\n```", code, re.DOTALL)
                     python_code = match.group(1) if match else code
                     python_code = python_code.replace("plt.show()", "st.pyplot(plt)")
                     exec(python_code, globals())
                 except Exception as e:
-                    st.error(f"⚠️ Error executing visualization: {e}")
-    else:
-        st.info("📂 Please upload and transform your data in 'Data Transformation' first!")
-
+                    error_msg = f"⚠️ Error executing visualization: {e}"
+                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                    st.chat_message("assistant").write(error_msg)
+        else:
+            st.info("🔹 Please enter your API key and upload a dataset to get started !")
 # Page: About
 elif page == "About":
     st.title("ℹ️ About QueryGenius")
@@ -191,3 +230,9 @@ elif page == "About":
     """)
 
 
+
+        
+ 
+
+  
+    
