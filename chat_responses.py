@@ -47,11 +47,11 @@ def select_best_visualization(data: pd.DataFrame, user_request: str) -> str:
     dataset_summary = data.describe(include='all').to_string()
     prompt = f"""
     Based on the dataset summary and the user's request, recommend the three most effective visualization techniques while ensuring compliance with data visualization best practices:
-    -Clearly specify the type of visualization (e.g., line chart, bar chart, heatmap, box plot).
-    -Justify why each visualization is the most suitable choice given the dataset and the analytical goal.
-    -Consider factors like data clarity, ease of interpretation, and suitability for large datasets.
-    -If applicable, suggest enhancements like color schemes, annotations, or interactive elements that improve user experience.
-   
+    -Clearly specify the type of visualization in 2 sentences (e.g., line chart, bar chart, heatmap, box plot).
+    -Justify why each visualization is the most suitable choice given the dataset and the analytical goal in 2 sentences.
+    -Consider factors like data clarity, ease of interpretation, and suitability for large datasets in 2 sentences.
+    -If applicable, suggest enhancements like color schemes, annotations, or interactive elements that improve user experience in 2 sentences.
+    
     Dataset Summary:
     {dataset_summary}
 
@@ -69,7 +69,7 @@ def generate_visualization_code(data: pd.DataFrame, visualization_types: str, us
     """
     dataset_info = data.dtypes.to_string()
     prompt = f"""
-    Based on the dataset and user request, generate Python code for the following visualizations using matplotlib, seaborn, or plotly:
+    Based on the dataset and user request, generate Correct Python code for the following visualizations using matplotlib, seaborn, or plotly:
     - {visualization_types}
 
     Dataset Columns and Types:
@@ -81,7 +81,7 @@ def generate_visualization_code(data: pd.DataFrame, visualization_types: str, us
     Guidelines:
     -Use the DataFrame variable name df.
     -Import all the necessary libraries you need for the visualizations.
-    -The code should be optimized for Streamlit and ensure clear, precise, and well-structured visualizations.
+    -The code should be optimized and correct for Streamlit and ensure clear, precise, and well-structured visualizations.
     -Apply appropriate titles, axis labels, legends, and color schemes for readability.
     -Use gridlines, annotations, and formatting enhancements where relevant.
     -Ensure the code is executable without requiring modifications.
